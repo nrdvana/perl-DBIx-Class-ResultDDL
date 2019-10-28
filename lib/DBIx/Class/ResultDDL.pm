@@ -127,9 +127,9 @@ my @common= qw(
 	  ddl_cascade dbic_cascade
 );
 our %EXPORT_TAGS;
-$EXPORT_TAGS{V1}= [ @common, 'auto_inc', 'unique', 'array' ];
+$EXPORT_TAGS{V1}= [ @common, 'auto_inc', 'unique', 'array', 'view' ];
 $EXPORT_TAGS{V0}= [ @common, auto_inc0 => { -as => 'auto_inc' } ];
-export @common, qw( auto_inc auto_inc0 unique array );
+export @common, qw( auto_inc auto_inc0 unique array view );
 
 =head1 EXPORTED METHODS
 
@@ -158,6 +158,7 @@ C<null> in your options.
 You will probably use many of the methods below to build the options for the column:
 
 =cut
+
 
 sub col {
 	my $name= shift;
@@ -693,6 +694,23 @@ sub dbic_cascade {
 		cascade_copy => $mode,
 		cascade_delete => $mode;
 }
+
+sub view {
+        my ($name, $definition, %opts) = @_;
+        my $pkg= $CALLER || caller;
+        DBIx::Class::Core->can('table_class')->($pkg, 'DBIx::Class::ResultSource::View');
+        DBIx::Class::Core->can('table')->($pkg, $name);
+
+        my $rsi = $pkg->result_source_instance;
+        $rsi->view_definition($definition);
+
+        $rsi->deploy_depends_on($opts{depends}) if $opts{depends};
+        $rsi->is_virtual($opts{virtual});
+        
+        return $rsi
+}
+
+
 
 =head1 MISSING FUNCTIONALITY
 
