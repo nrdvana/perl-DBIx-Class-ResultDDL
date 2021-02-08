@@ -11,11 +11,15 @@ use Carp;
 =head1 SYNOPSIS
 
   package MyApp::Schema::Result::Artist;
-  use DBIx::Class::ResultDDL -V1;
+  use DBIx::Class::ResultDDL qw/ -V1 -inflate_datetime -inflate_json /;
   
   table 'artist';
-  col id   => integer, unsigned, auto_inc;
-  col name => varchar(25), null;
+  col id           => integer unsigned auto_inc;
+  col name         => varchar(25), null;
+  col formed       => date;
+  col disbanded    => date, null;
+  col general_info => json null;
+  col last_update  => datetime('UTC');
   primary_key 'id';
   
   idx artist_by_name => [ 'name' ];
@@ -284,17 +288,19 @@ sub _maybe_size_or_max {
 	return undef;
 }
 sub _maybe_timezone {
-	return shift if @_ && !ref $_[0];
+	# This is a weak check, but assume the timezone will have at least one capital letter,
+	# and that DBIC column attribute names will not.
+	return shift if @_ && !ref $_[0] && $_[0] =~ /(^floating$|^local$|[A-Z])/;
 	return undef;
 }
 
 =over
 
-=item null
+=item C<null>
 
   is_nullable => 1
 
-=item auto_inc
+=item C<auto_inc>
 
   is_auto_increment => 1, 'extra.auto_increment_type' => 'monotonic'
 
@@ -306,11 +312,11 @@ the extra work by default, but if you're declaring columns by hand expecting it 
 be platform-neutral, then you probably want this.  SQLite also requires data_type
 "integer", and for it to be the primary key.)
 
-=item fk
+=item C<fk>
 
   is_foreign_key => 1
 
-=item default($value | @value)
+=item C<< default($value | @value) >>
 
   default_value => $value
   default_value => [ @value ] # if more than one param
@@ -580,34 +586,49 @@ sub enum        { data_type => 'enum', 'extra.list' => [ @_ ]}
 sub boolean     { data_type => 'boolean'.&_maybe_array, @_ }
 sub bool        { data_type => 'boolean'.&_maybe_array, @_ }
 
-=item date, date($timezone)
+=item C<date>, C<date($timezone)>
 
   data_type => 'date'
   time_zone => $timezone if defined $timezone
 
-=item datetime, datetime($timezone)
+=item C<datetime>, C<datetime($timezone)>
 
   data_type => 'datetime'
   time_zone => $timezone if defined $timezone
 
-=item timestamp, timestamp($timezone)
+=item C<timestamp>, C<timestamp($timezone)>
 
   date_type => 'timestamp'
   time_zone => $timezone if defined $timezone
 
 =cut
 
-sub date        { my $tz= &_maybe_timezone; data_type => 'date'.&_maybe_array,     ($tz? (time_zone => $tz) : ()), @_ }
+sub date        { data_type => 'date'.&_maybe_array, @_ }
 sub datetime    { my $tz= &_maybe_timezone; data_type => 'datetime'.&_maybe_array, ($tz? (time_zone => $tz) : ()), @_ }
 sub timestamp   { my $tz= &_maybe_timezone; data_type => 'timestamp'.&_maybe_array,($tz? (time_zone => $tz) : ()), @_ }
 
-=item C<array($type)>
+=item C<array($type)>, C<array(..., data_type => $type, ...)>
 
-Declares a postgres array type with notation C<< data_type => $type . '[]' >> 
+Declares a postgres array type with notation C<< data_type => $type . '[]' >>.
+You may use sugar functions as arguments.
 
 =cut
 
-sub array       { my $type = shift or die 'array needs a type'; data_type => $type . '[]' }
+sub array {
+	# If one argument and the argument is a string, then it is a type name
+	if (@_ == 1 && $_[0] && !ref $_[0]) {
+		return data_type => $_[0] . '[]';
+	}
+	# Else, scan through argument list looking for data_type, and append [] to following item.
+	my $data_type_idx;
+	for (my $i= 0; $i < @_; $i++) {
+		$data_type_idx= $i+1 if $_[$i] eq 'data_type'
+	}
+	$data_type_idx && $_[$data_type_idx] && !ref $_[$data_type_idx]
+		or die 'array needs a type';
+	$_[$data_type_idx] .= '[]';
+	return @_;
+}
 
 =item C<uuid>, C<uuid[]>
 
@@ -632,7 +653,7 @@ If C<< -inflate_json >> use-line option was given, this will additionally imply 
 
 If C<< -inflate_json >> use-line option was given, this will additionally imply C<< serializer_class => 'JSON' >>.
 
-=item inflate_json
+=item C<inflate_json>
 
   serializer_class => 'JSON'
 

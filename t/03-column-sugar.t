@@ -202,6 +202,12 @@ test_col_defs(
 	[ 'array("text")',
 		{ data_type => 'text[]' }
 	],
+	[ 'array(text)',
+		{ data_type => 'text[]' },
+	],
+	[ 'array(decimal(5,3))',
+		{ data_type => 'decimal[]', size => [5,3] }
+	],
 	[ 'array("int")',
 		{ data_type => 'int[]' }
 	],
