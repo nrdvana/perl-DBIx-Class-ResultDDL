@@ -294,13 +294,11 @@ sub _maybe_timezone {
 	return undef;
 }
 
-=over
-
-=item C<null>
+=head3 null
 
   is_nullable => 1
 
-=item C<auto_inc>
+=head3 auto_inc
 
   is_auto_increment => 1, 'extra.auto_increment_type' => 'monotonic'
 
@@ -312,14 +310,15 @@ the extra work by default, but if you're declaring columns by hand expecting it 
 be platform-neutral, then you probably want this.  SQLite also requires data_type
 "integer", and for it to be the primary key.)
 
-=item C<fk>
+=head3 fk
 
   is_foreign_key => 1
 
-=item C<< default($value | @value) >>
+=head3 default
 
-  default_value => $value
-  default_value => [ @value ] # if more than one param
+  # Call:                       Becomes:
+  default($value)               default_value => $value
+  default(@value)               default_value => [ @value ]
 
 =cut
 
@@ -328,72 +327,75 @@ sub auto_inc    { is_auto_increment => 1, 'extra.auto_increment_type' => 'monoto
 sub fk          { is_foreign_key => 1, @_ }
 sub default     { default_value => (@_ > 1? [ @_ ] : $_[0]) }
 
-=item C<integer>, C<integer($size)>, C<integer[]>, C<integer $size,[]>
+=head3 integer, tinyint, smallint, bigint
 
-  data_type => 'integer', size => $size || 11
-  data_type => 'integer[]', size => $size || 11
+  # Call:                       Becomes:
+  integer                       data_type => 'integer',   size => 11
+  integer($size)                data_type => 'integer',   size => $size
+  integer[]                     data_type => 'integer[]', size => 11
+  integer $size,[]              data_type => 'integer[]', size => $size
+  
+  # MySQL variants
+  tinyint                       data_type => 'tinyint',   size => 4
+  smallint                      data_type => 'smallint',  size => 6
+  bigint                        data_type => 'bigint',    size => 22
 
-=item C<unsigned>
+=head3 unsigned
 
   extra => { unsigned => 1 }
 
 MySQL specific flag which can be combined with C<integer>
 
-=item C<tinyint>
+=head3 numeric
 
-  data_type => 'tinyint', size => 4
+  # Call:                       Becomes:
+  numeric                       data_type => 'numeric'
+  numeric($p)                   data_type => 'numeric', size => [ $p ]
+  numeric($p,$s)                data_type => 'numeric', size => [ $p, $s ]
+  numeric[]                     data_type => 'numeric[]'
+  numeric $p,$s,[]              data_type => 'numeric[]', size => [ $p, $s ]
 
-=item C<smallint>
+=head3 decimal
 
-  data_type => 'smallint', size => 6
+Identical to L<numeric>, but sets C<< data_type => 'decimal' >>
 
-=item C<bigint>
+=head3 money
 
-  data_type => 'bigint', size => 22
+  # Call:                       Becomes:
+  money                         data_type => 'money'
+  money[]                       data_type => 'money[]'
 
-=item C<numeric>, C<numeric($p)>, C<numeric($p,$s)>, C<numeric[]>, C<numeric $p,$s,[]>
+=head3 real
 
-  data_type => 'numeric'
-  data_type => 'numeric', size => [ $p ]
-  data_type => 'numeric', size => [ $p, $s ]
-  data_type => 'numeric[]'
-  data_type => 'numeric[]', size => [ $p, $s ]
+  # Call:                       Becomes:
+  real                          data_type => 'real'
+  rea[]                         data_type => 'real[]'
 
-=item C<decimal>
+=head3 float4
 
-Identical to C<numeric>, but sets C<< data_type => 'decimal' >>
+  # Call:                       Becomes:
+  float4                        data_type => 'float4'
+  float4[]                      data_type => 'float4[]'
 
-=item C<money>, C<money[]>
+=head3 double
 
-  data_type => 'money'
-  data_type => 'money[]'
+  # Call:                       Becomes:
+  double                        data_type => 'double precision'
+  double[]                      data_type => 'double precision[]'
 
-=item C<real>, C<real[]>
+=head3 float8
 
-  data_type => 'real'
-  data_type => 'real[]'
+  # Call:                       Becomes:
+  float8                        data_type => 'float8'
+  float8[]                      data_type => 'float8[]'
 
-=item C<float4>, C<float4[]>
+=head3 float
 
-  data_type => 'float4'
-  data_type => 'float4[]'
-
-=item C<double>, C<double[]>
-
-  data_type => 'double precision'
-  data_type => 'double precision[]'
-
-=item C<float8>, C<float8[]>
-
-  data_type => 'float8'
-  data_type => 'float8[]'
-
-=item C<float>, C<float($bits)>, C<float[]>, C<float $bits,[]>
-
-  data_type => 'float'
-  data_type => 'float', size => $bits
-  data_type => 'float[]'
-  data_type => 'float[], size => $bits
+  # Call:                       Becomes:
+  float                         data_type => 'float'
+  float($bits)                  data_type => 'float', size => $bits
+  float[]                       data_type => 'float[]'
+  float $bits,[]                data_type => 'float[], size => $bits
 
 SQLServer and Postgres offer this, where C<$bits> is the number of bits of precision
 of the mantissa.  Array notation is supported for Postgres.
@@ -428,63 +430,51 @@ sub float4      { data_type => 'float4'.&_maybe_array, @_ }
 # the float used by SQL Server allows variable size spec as number of bits of mantissa
 sub float       { my $size= &_maybe_size; data_type => 'float'.&_maybe_array, (defined $size? (size => $size) : ()), @_ }
 
-=item C<char>, C<char($size)>, C<char[]>, C<char $size,[]>
+=head3 char
 
-  data_type => 'char', size => $size // 1
-  data_type => 'char[]', size => $size // 1
+  # Call:                       Becomes:
+  char                          data_type => 'char', size => 1
+  char($size)                   data_type => 'char', size => $size
+  char[]                        data_type => 'char[]', size => 1
+  char $size,[]                 data_type => 'char[]', size => $size
 
-=item C<varchar>, C<varchar($size)>, C<varchar(MAX)>, C<varchar[]>, C<varchar $size,[]>
+=head3 varchar
 
-  data_type => 'varchar'
-  data_type => 'varchar', size => $size  # "MAX" is a valid size for SQL Server
-  data_type => 'varchar[]'
-  data_type => 'varchar[]', size => $size
+  # Call:                       Becomes:
+  varchar                       data_type => 'varchar'
+  varchar($size)                data_type => 'varchar', size => $size
+  varchar(MAX)                  data_type => 'varchar', size => "MAX"
+  varchar[]                     data_type => 'varchar[]'
+  varchar $size,[]              data_type => 'varchar[]', size => $size
 
-=item C<nchar>, C<nchar($size)>
+=head3 nchar, nvarchar
 
-SQL Server specific type for unicode char.  Same API as C<char>.
+SQL Server specific type for unicode char/varchar.  Same API as L</char> and L</varchar>.
 
-=item C<nvarchar>
+=head3 MAX
 
-SQL Server specific type for unicode varying character string.  Same API as C<varchar>.
+Constant for C<"MAX">, used by SQL Server for C<< varchar(MAX) >>.
 
-=item C<MAX>
+=head3 binary, varbinary
 
-Constant for 'MAX', used by SQL Server for C<< varchar(MAX) >>.
+Same API as L</varchar>, for both.  i.e. no special defaut of C<< size => 1 >>
 
-=item C<binary>, C<binary($size)>, C<binary[]>, C<binary $size,[]>
+=head3 bit, varbit
 
-  data_type => 'binary'
-  data_type => 'binary', size => $size
-  data_type => 'binary[]'
-  data_type => 'binary[]', size => $size
+Same API as L</char>, L</varchar>
 
-=item C<varbinary>, C<varbinary($size)>, C<varbinary[]>, C<varbinary $size,[]>
+Note that Postgres allows C<"bit"> to have a size, like C<char($size)> but SQL Server
+uses C<"bit"> only to represent a single bit.
 
-  data_type => 'varbinary'
-  data_type => 'varbinary', size => $size
-  data_type => 'varbinary[]'
-  data_type => 'varbinary[]', size => $size
+=head3 blob, tinyblob, mediumblob, longblob
 
-=item C<bit>, C<bit($size)>, C<bit[]>, C<bit $size,[]>
-
-  data_type => 'bit', size => $size // 1
-  data_type => 'bit[]', size => $size // 1
-
-Note that Postgres allows length-N bit strings, and arrays of length-N bit strings,
-but SQL Server uses this same type name to represent a single bit.
-
-=item C<varbit>, C<varbit($size)>, C<varbit[]>, C<varbit $size,[]>
-
-  data_type => 'varbit'
-  data_type => 'varbit', size => $size
-  data_type => 'varbit[]'
-  data_type => 'varbit[]', size => $size
-
-=item C<blob>, C<blob($size)>
-
-  data_type => 'blob',
-  size => $size if defined $size
+  blob                          data_type => 'blob',
+  blob($size)                   data_type => 'blob', size => $size
+  
+  # MySQL specific variants:
+  tinyblob                      data_type => 'tinyblob', size => 0xFF
+  mediumblob                    data_type => 'mediumblob', size => 0xFFFFFF
+  longblob                      data_type => 'longblob', size => 0xFFFFFFFF
 
 Note: For MySQL, you need to change the type according to '$size'.  A MySQL blob is C<< 2^16 >>
 max length, and probably none of your binary data would be that small.  Consider C<mediumblob>
@@ -494,54 +484,33 @@ conversion automatically according to which DBMS you are connected to.
 For SQL Server, newer versions deprecate C<blob> in favor of C<VARCHAR(MAX)>.  This is another
 detail you might take care of in sqlt_deploy_hook.
 
-=item C<bytea>, C<bytea[]>
+=head3 bytea
 
-Postgres's blob type.  (no size is allowed)
+  bytea                         data_type => 'bytea'
+  bytea[]                       data_type => 'bytea[]'
 
-=item C<tinyblob>
+Postgres's blob type.  (no size parameter)
 
-MySQL-specific type for small blobs
+=head3 text, tinytext, mediumtext, longtext
 
-  data_type => 'tinyblob', size => 0xFF
+  text                          data_type => 'text',
+  text($size)                   data_type => 'text', size => $size
+  text[]                        data_type => 'text[]'
+  
+  # MySQL specific variants:
+  tinytext                      data_type => 'tinytext', size => 0xFF
+  mediumtext                    data_type => 'mediumtext', size => 0xFFFFFF
+  longtext                      data_type => 'longtext', size => 0xFFFFFFFF
 
-=item C<mediumblob>
+See MySQL notes in C<blob>.  For SQL Server, you might want C<ntext> or C<< nvarchar(MAX) >>
+instead.  Postgres does not use a size, and allows arrays of this type.
 
-MySQL-specific type for larger blobs
+=head3 ntext
 
-  data_type => 'mediumblob', size => 0xFFFFFF
-
-=item C<longblob>
-
-MySQL-specific type for the longest supported blob type
-
-  data_type => 'longblob', size => 0xFFFFFFFF
-
-=item C<text>, C<text($size)>, C<text[]>
-
-  data_type => 'text',
-  data_type => 'text', size => $size
-  data_type => 'text[]'
-
-See MySQL notes in C<blob>.  For SQL Server, you might want C<ntext> or C<< varchar(MAX) >> instead.
-Postgres does not use a size, and allows arrays of this type.
-
-=item C<tinytext>
-
-  data_type => 'tinytext', size => 0xFF
-
-=item C<mediumtext>
-
-  data_type => 'mediumtext', size => 0xFFFFFF
-
-=item C<longtext>
-
-  data_type => 'longtext', size => 0xFFFFFFFF
-
-=item C<ntext>, C<ntext($size)>
+  ntext                         data_type => 'ntext', size => 0x3FFFFFFF
+  ntext($size)                  data_type => 'ntext', size => $size
 
 SQL-Server specific type for unicode C<text>.  Note that newer versions prefer C<< nvarchar(MAX) >>.
-
-  data_type => 'ntext', size => $size // 0x3FFFFFFF
 
 =cut
 
@@ -570,15 +539,21 @@ sub tinytext      { data_type => 'tinytext',  size => 0xFF, @_ }
 sub mediumtext    { data_type => 'mediumtext',size => 0xFFFFFF, @_ }
 sub longtext      { data_type => 'longtext',  size => 0xFFFFFFFF, @_ }
 
-=item C<< enum( @values ) >>
+=head3 enum
 
-  data_type => 'enum', extra => { list => [ @values ] }
+  enum(@values)                 data_type => 'enum', extra => { list => [ @values ] }
 
-=item C<bool>, C<boolean>
+This function cannot take pass-through arguments, since every argument is an enum value.
 
-  data_type => 'boolean'
+=head3 bool, boolean
 
-Note that SQL Server has 'bit' instead, though in postgres 'bit' is used for bitstrings.
+  bool                          data_type => 'boolean'
+  bool[]                        data_type => 'boolean[]'
+  boolean                       data_type => 'boolean'
+  boolean[]                     data_type => 'boolean[]'
+
+Note that SQL Server doesn't support 'boolean', the closest being 'bit',
+though in postgres 'bit' is used for bitstrings.
 
 =cut
 
@@ -586,20 +561,21 @@ sub enum        { data_type => 'enum', 'extra.list' => [ @_ ]}
 sub boolean     { data_type => 'boolean'.&_maybe_array, @_ }
 sub bool        { data_type => 'boolean'.&_maybe_array, @_ }
 
-=item C<date>, C<date($timezone)>
+=head3 date
 
-  data_type => 'date'
-  time_zone => $timezone if defined $timezone
+  date                          data_type => 'date'
+  date[]                        data_type => 'date[]'
 
-=item C<datetime>, C<datetime($timezone)>
+=head3 datetime
 
-  data_type => 'datetime'
-  time_zone => $timezone if defined $timezone
+  datetime                      data_type => 'datetime'
+  datetime($tz)                 data_type => 'datetime', time_zone => $tz
+  datetime[]                    data_type => 'datetime[]'
+  datetime $tz, []              data_type => 'datetime[]', time_zone => $tz
 
-=item C<timestamp>, C<timestamp($timezone)>
+=head3 timestamp
 
-  date_type => 'timestamp'
-  time_zone => $timezone if defined $timezone
+Same API as L</datetime> but returning C<< data_type => 'timezone' >>
 
 =cut
 
@@ -607,10 +583,16 @@ sub date        { data_type => 'date'.&_maybe_array, @_ }
 sub datetime    { my $tz= &_maybe_timezone; data_type => 'datetime'.&_maybe_array, ($tz? (time_zone => $tz) : ()), @_ }
 sub timestamp   { my $tz= &_maybe_timezone; data_type => 'timestamp'.&_maybe_array,($tz? (time_zone => $tz) : ()), @_ }
 
-=item C<array($type)>, C<array(..., data_type => $type, ...)>
+=head3 array
 
-Declares a postgres array type with notation C<< data_type => $type . '[]' >>.
-You may use sugar functions as arguments.
+  array($type)                  data_type => $type.'[]'
+  array(@dbic_attrs)            data_type => $type.'[]', @other_attrs
+  # i.e.
+  array numeric(10,3)           data_type => 'numeric[]', size => [10,3]
+
+Declares a postgres array type by appending C<"[]"> to a type name.
+The type name can be given as a single string, or as any sugar function that
+returns a C<< data_type => $type >> pair of elements.
 
 =cut
 
@@ -630,35 +612,31 @@ sub array {
 	return @_;
 }
 
-=item C<uuid>, C<uuid[]>
+=head3 uuid
 
-  data_type => 'uuid'
-  data_type => 'uuid[]'
+  uuid                          data_type => 'uuid'
+  uuid[]                        data_type => 'uuid[]'
 
 =cut
 
 sub uuid          { data_type => 'uuid'.&_maybe_array, @_ }
 
-=item C<json>, C<json[]>
+=head3 json, jsonb
 
-  data_type => 'json'
-  data_type => 'json[]'
+  json                          data_type => 'json'
+  json[]                        data_type => 'json[]'
+  jsonb                         data_type => 'jsonb'
+  jsonb[]                       data_type => 'jsonb[]'
 
-If C<< -inflate_json >> use-line option was given, this will additionally imply C<< serializer_class => 'JSON' >>.
+If C<< -inflate_json >> use-line option was given, this will additionally imply
+L</inflate_json>.
 
-=item C<jsonb>, C<jsonb[]>
+=head3 inflate_json
 
-  data_type => 'jsonb'
-  data_type => 'jsonb[]'
+  inflate_json                  serializer_class => 'JSON'
 
-If C<< -inflate_json >> use-line option was given, this will additionally imply C<< serializer_class => 'JSON' >>.
-
-=item C<inflate_json>
-
-  serializer_class => 'JSON'
-
-Also adds the component 'InflateColumn::Serializer' to the current package if it wasn't
-added already.
+This first loads the DBIC component 'InflateColumn::Serializer' into the current
+package if it wasn't added already.
 
 =cut
 
@@ -678,8 +656,6 @@ sub inflate_json {
 		unless $pkg->isa('DBIx::Class::InflateColumn::Serializer');
 	return serializer_class => 'JSON', @_;
 }
-
-=back
 
 =head2 primary_key
 
