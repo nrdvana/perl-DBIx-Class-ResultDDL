@@ -158,7 +158,8 @@ L<DBIx::Class::InflateColumn::DateTime>.
 =head2 C<-inflate_json>
 
 Causes all columns declared with C<json> or C<jsonb> sugar methods to also
-declare C<inflate_json>.
+declare L</inflate_json>.  This requires L<DBIx::Class::InflateColumn::Serializer>
+to be installed (which is not an official dependency of this module).
 
 =cut
 
@@ -327,9 +328,8 @@ sub auto_inc    { is_auto_increment => 1, 'extra.auto_increment_type' => 'monoto
 sub fk          { is_foreign_key => 1, @_ }
 sub default     { default_value => (@_ > 1? [ @_ ] : $_[0]) }
 
-=head3 integer, tinyint, smallint, bigint
+=head3 integer, tinyint, smallint, bigint, unsigned
 
-  # Call:                       Becomes:
   integer                       data_type => 'integer',   size => 11
   integer($size)                data_type => 'integer',   size => $size
   integer[]                     data_type => 'integer[]', size => 11
@@ -339,53 +339,33 @@ sub default     { default_value => (@_ > 1? [ @_ ] : $_[0]) }
   tinyint                       data_type => 'tinyint',   size => 4
   smallint                      data_type => 'smallint',  size => 6
   bigint                        data_type => 'bigint',    size => 22
+  # MySQL specific flag which can be combined with int types
+  unsigned                      extra => { unsigned => 1 }
 
-=head3 unsigned
+=head3 numeric, decimal
 
-  extra => { unsigned => 1 }
-
-MySQL specific flag which can be combined with C<integer>
-
-=head3 numeric
-
-  # Call:                       Becomes:
   numeric                       data_type => 'numeric'
   numeric($p)                   data_type => 'numeric', size => [ $p ]
   numeric($p,$s)                data_type => 'numeric', size => [ $p, $s ]
   numeric[]                     data_type => 'numeric[]'
   numeric $p,$s,[]              data_type => 'numeric[]', size => [ $p, $s ]
 
-=head3 decimal
-
-Identical to L<numeric>, but sets C<< data_type => 'decimal' >>
+  # Same API for decimal
+  decimal ...                   data_type => 'decimal' ...
 
 =head3 money
 
-  # Call:                       Becomes:
   money                         data_type => 'money'
   money[]                       data_type => 'money[]'
 
-=head3 real
+=head3 real, float4, double, float8
 
-  # Call:                       Becomes:
   real                          data_type => 'real'
   rea[]                         data_type => 'real[]'
-
-=head3 float4
-
-  # Call:                       Becomes:
   float4                        data_type => 'float4'
   float4[]                      data_type => 'float4[]'
-
-=head3 double
-
-  # Call:                       Becomes:
   double                        data_type => 'double precision'
   double[]                      data_type => 'double precision[]'
-
-=head3 float8
-
-  # Call:                       Becomes:
   float8                        data_type => 'float8'
   float8[]                      data_type => 'float8[]'
 
@@ -395,7 +375,7 @@ Identical to L<numeric>, but sets C<< data_type => 'decimal' >>
   float                         data_type => 'float'
   float($bits)                  data_type => 'float', size => $bits
   float[]                       data_type => 'float[]'
-  float $bits,[]                data_type => 'float[], size => $bits
+  float $bits,[]                data_type => 'float[]', size => $bits
 
 SQLServer and Postgres offer this, where C<$bits> is the number of bits of precision
 of the mantissa.  Array notation is supported for Postgres.
@@ -430,43 +410,45 @@ sub float4      { data_type => 'float4'.&_maybe_array, @_ }
 # the float used by SQL Server allows variable size spec as number of bits of mantissa
 sub float       { my $size= &_maybe_size; data_type => 'float'.&_maybe_array, (defined $size? (size => $size) : ()), @_ }
 
-=head3 char
+=head3 char, nchar, bit
 
   # Call:                       Becomes:
   char                          data_type => 'char', size => 1
   char($size)                   data_type => 'char', size => $size
   char[]                        data_type => 'char[]', size => 1
   char $size,[]                 data_type => 'char[]', size => $size
+  
+  # Same API for the others
+  nchar ...                     data_type => 'nchar' ...
+  bit ...                       data_type => 'bit' ...
 
-=head3 varchar
+C<nchar> (SQL Server unicode char array) has an identical API but
+returns C<< data_type => 'nchar' >>
 
-  # Call:                       Becomes:
+Note that Postgres allows C<"bit"> to have a size, like C<char($size)> but SQL Server
+uses C<"bit"> only to represent a single bit.
+
+=head3 varchar, nvarchar, binary, varbinary, varbit
+
   varchar                       data_type => 'varchar'
   varchar($size)                data_type => 'varchar', size => $size
   varchar(MAX)                  data_type => 'varchar', size => "MAX"
   varchar[]                     data_type => 'varchar[]'
   varchar $size,[]              data_type => 'varchar[]', size => $size
+  
+  # Same API for the others
+  nvarchar ...                  data_type => 'nvarchar' ...
+  binary ...                    data_type => 'binary' ...
+  varbinary ...                 data_type => 'varbinary' ...
+  varbit ...                    data_type => 'varbit' ...
 
-=head3 nchar, nvarchar
-
-SQL Server specific type for unicode char/varchar.  Same API as L</char> and L</varchar>.
+Unlike char/varchar relation, C<binary> does not default the size to 1.
 
 =head3 MAX
 
 Constant for C<"MAX">, used by SQL Server for C<< varchar(MAX) >>.
 
-=head3 binary, varbinary
-
-Same API as L</varchar>, for both.  i.e. no special defaut of C<< size => 1 >>
-
-=head3 bit, varbit
-
-Same API as L</char>, L</varchar>
-
-Note that Postgres allows C<"bit"> to have a size, like C<char($size)> but SQL Server
-uses C<"bit"> only to represent a single bit.
-
-=head3 blob, tinyblob, mediumblob, longblob
+=head3 blob, tinyblob, mediumblob, longblob, bytea
 
   blob                          data_type => 'blob',
   blob($size)                   data_type => 'blob', size => $size
@@ -476,6 +458,10 @@ uses C<"bit"> only to represent a single bit.
   mediumblob                    data_type => 'mediumblob', size => 0xFFFFFF
   longblob                      data_type => 'longblob', size => 0xFFFFFFFF
 
+  # Postgres blob type is 'bytea'
+  bytea                         data_type => 'bytea'
+  bytea[]                       data_type => 'bytea[]'
+
 Note: For MySQL, you need to change the type according to '$size'.  A MySQL blob is C<< 2^16 >>
 max length, and probably none of your binary data would be that small.  Consider C<mediumblob>
 or C<longblob>, or consider overriding C<< My::Schema::sqlt_deploy_hook >> to perform this
@@ -484,14 +470,7 @@ conversion automatically according to which DBMS you are connected to.
 For SQL Server, newer versions deprecate C<blob> in favor of C<VARCHAR(MAX)>.  This is another
 detail you might take care of in sqlt_deploy_hook.
 
-=head3 bytea
-
-  bytea                         data_type => 'bytea'
-  bytea[]                       data_type => 'bytea[]'
-
-Postgres's blob type.  (no size parameter)
-
-=head3 text, tinytext, mediumtext, longtext
+=head3 text, tinytext, mediumtext, longtext, ntext
 
   text                          data_type => 'text',
   text($size)                   data_type => 'text', size => $size
@@ -501,16 +480,15 @@ Postgres's blob type.  (no size parameter)
   tinytext                      data_type => 'tinytext', size => 0xFF
   mediumtext                    data_type => 'mediumtext', size => 0xFFFFFF
   longtext                      data_type => 'longtext', size => 0xFFFFFFFF
+  
+  # SQL Server unicode variant:
+  ntext                         data_type => 'ntext', size => 0x3FFFFFFF
+  ntext($size)                  data_type => 'ntext', size => $size
 
 See MySQL notes in C<blob>.  For SQL Server, you might want C<ntext> or C<< nvarchar(MAX) >>
 instead.  Postgres does not use a size, and allows arrays of this type.
 
-=head3 ntext
-
-  ntext                         data_type => 'ntext', size => 0x3FFFFFFF
-  ntext($size)                  data_type => 'ntext', size => $size
-
-SQL-Server specific type for unicode C<text>.  Note that newer versions prefer C<< nvarchar(MAX) >>.
+Newer versions of SQL-Server prefer C<< nvarchar(MAX) >> instead of C<ntext>.
 
 =cut
 
@@ -566,16 +544,15 @@ sub bool        { data_type => 'boolean'.&_maybe_array, @_ }
   date                          data_type => 'date'
   date[]                        data_type => 'date[]'
 
-=head3 datetime
+=head3 datetime, timestamp
 
   datetime                      data_type => 'datetime'
   datetime($tz)                 data_type => 'datetime', time_zone => $tz
   datetime[]                    data_type => 'datetime[]'
   datetime $tz, []              data_type => 'datetime[]', time_zone => $tz
-
-=head3 timestamp
-
-Same API as L</datetime> but returning C<< data_type => 'timezone' >>
+  
+  # Same API
+  timestamp ...                 data_type => 'timestamp', ...
 
 =cut
 
@@ -635,8 +612,9 @@ L</inflate_json>.
 
   inflate_json                  serializer_class => 'JSON'
 
-This first loads the DBIC component 'InflateColumn::Serializer' into the current
-package if it wasn't added already.
+This first loads the DBIC component L<DBIx::Class::InflateColumn::Serializer>
+into the current package if it wasn't added already.  Note that that module is
+not a dependency of this one and needs to be installed separately.
 
 =cut
 
