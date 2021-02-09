@@ -219,6 +219,7 @@ my @V1= qw(
   rel_one rel_many has_one might_have has_many belongs_to many_to_many
     ddl_cascade dbic_cascade
 );
+
 our %EXPORT_TAGS;
 $EXPORT_TAGS{V1}= \@V1;
 export @V1;
@@ -1053,8 +1054,9 @@ contribute a patch.
 
 =head1 THANKS
 
-Thanks to Clippard Instrument Laboratory Inc. and Ellis Partners in Management Solutions
-for supporting open source, including portions of this module.
+Thanks to L<Clippard Instrument Laboratory Inc.|http://www.clippard.com/> and
+L<Ellis, Partners in Management Solutions|http://www.epmsonline.com/> for
+supporting open source, including portions of this module.
 
 =cut
 
