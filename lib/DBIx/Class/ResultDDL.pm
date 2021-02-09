@@ -163,6 +163,11 @@ to be installed (which is not an official dependency of this module).
 
 =cut
 
+our %_resultDDL_settings_for_package;
+sub _resultDDL_settings_for_package {
+	return $_resultDDL_settings_for_package{shift()} ||= {};
+}
+
 sub enable_inflate_datetime :Export(-inflate_datetime) {
 	my $self= shift;
 	$self->_inherit_dbic;
@@ -173,9 +178,10 @@ sub enable_inflate_datetime :Export(-inflate_datetime) {
 sub enable_inflate_json :Export(-inflate_json) {
 	my $self= shift;
 	$self->_inherit_dbic;
-	$self->{into}->load_components('InflateColumn::Serializer')
-		unless $self->{into}->isa('DBIx::Class::InflateColumn::Serializer');
-	($self->{ResultDDL_json_defaults} ||= {})->{serializer_class}= 'JSON';
+	my $pkg= $self->{into};
+	$pkg->load_components('InflateColumn::Serializer')
+		unless $pkg->isa('DBIx::Class::InflateColumn::Serializer');
+	_resultDDL_settings_for_package($pkg)->{json_defaults}{serializer_class}= 'JSON';
 }
 
 =head1 EXPORTED COLLECTIONS
@@ -213,7 +219,7 @@ my @V1= qw(
 );
 our %EXPORT_TAGS;
 $EXPORT_TAGS{V1}= \@V1;
-export grep !/^jsonb?$/, @V1; # the json and jsonb functions are exported as generators, below
+export @V1;
 
 =head2 C<:V0>
 
@@ -619,13 +625,15 @@ not a dependency of this one and needs to be installed separately.
 =cut
 
 # This is a generator that includes the json_args into the installed method.
-sub json :Export(=) {
-	my $json_defaults= $_[0]{ResultDDL_json_defaults} ||= {};
-	return sub { data_type => 'json'.&_maybe_array, %$json_defaults, @_ }
+sub json {
+	my $pkg= ($CALLER||caller);
+	my $defaults= _resultDDL_settings_for_package($pkg)->{json_defaults};
+	return data_type => 'json'.&_maybe_array, ($defaults? %$defaults : ()), @_
 }
-sub jsonb :Export(=) {
-	my $json_defaults= $_[0]{ResultDDL_json_defaults} ||= {};
-	return sub { data_type => 'jsonb'.&_maybe_array, %$json_defaults, @_ }
+sub jsonb {
+	my $pkg= ($CALLER||caller);
+	my $defaults= _resultDDL_settings_for_package($pkg)->{json_defaults};
+	return data_type => 'jsonb'.&_maybe_array, ($defaults? %$defaults : ()), @_
 }
 
 sub inflate_json {
