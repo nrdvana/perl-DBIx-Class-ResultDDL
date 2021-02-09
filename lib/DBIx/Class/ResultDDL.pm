@@ -163,9 +163,9 @@ to be installed (which is not an official dependency of this module).
 
 =cut
 
-our %_resultDDL_settings_for_package;
-sub _resultDDL_settings_for_package {
-	return $_resultDDL_settings_for_package{shift()} ||= {};
+our %_settings_for_package;
+sub _settings_for_package {
+	return $_settings_for_package{shift()} ||= {};
 }
 
 sub enable_inflate_datetime :Export(-inflate_datetime) {
@@ -181,7 +181,7 @@ sub enable_inflate_json :Export(-inflate_json) {
 	my $pkg= $self->{into};
 	$pkg->load_components('InflateColumn::Serializer')
 		unless $pkg->isa('DBIx::Class::InflateColumn::Serializer');
-	_resultDDL_settings_for_package($pkg)->{json_defaults}{serializer_class}= 'JSON';
+	_settings_for_package($pkg)->{json_defaults}{serializer_class}= 'JSON';
 }
 
 =head1 EXPORTED COLLECTIONS
@@ -627,12 +627,12 @@ not a dependency of this one and needs to be installed separately.
 # This is a generator that includes the json_args into the installed method.
 sub json {
 	my $pkg= ($CALLER||caller);
-	my $defaults= _resultDDL_settings_for_package($pkg)->{json_defaults};
+	my $defaults= _settings_for_package($pkg)->{json_defaults};
 	return data_type => 'json'.&_maybe_array, ($defaults? %$defaults : ()), @_
 }
 sub jsonb {
 	my $pkg= ($CALLER||caller);
-	my $defaults= _resultDDL_settings_for_package($pkg)->{json_defaults};
+	my $defaults= _settings_for_package($pkg)->{json_defaults};
 	return data_type => 'jsonb'.&_maybe_array, ($defaults? %$defaults : ()), @_
 }
 

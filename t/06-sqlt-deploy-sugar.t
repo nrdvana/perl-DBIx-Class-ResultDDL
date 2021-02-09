@@ -1,12 +1,13 @@
 use Test2::V0;
 no warnings 'once';
 
-package Mock_sqlt_table {
+{
+    package Mock_sqlt_table;
 	sub new { bless {}, shift }
 	sub calls { $_[0]{calls} ||= [] }
 	sub add_index { push @{shift->calls}, [ add_index => @_ ] }
 	sub add_constraint { push @{shift->calls}, [ add_constraint => @_ ] }
-};
+}
 
 my $ret= eval q{
 	package test::Table1;
