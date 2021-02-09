@@ -195,9 +195,10 @@ This tag selects the following symbols:
     null default auto_inc fk
     integer unsigned tinyint smallint bigint decimal numeric money
     float float4 float8 double real
-    char varchar nchar nvarchar binary varbinary blob text ntext uuid
+    char varchar nchar nvarchar MAX binary varbinary bit varbit
+    blob tinyblob mediumblob longblob text tinytext mediumtext longtext ntext bytea
     date datetime timestamp enum bool boolean
-    json jsonb inflate_json array
+    uuid json jsonb inflate_json array
   primary_key idx create_index unique sqlt_add_index sqlt_add_constraint
   rel_one rel_many has_one might_have has_many belongs_to many_to_many
     ddl_cascade dbic_cascade
@@ -205,17 +206,18 @@ This tag selects the following symbols:
 =cut
 
 my @V1= qw(
-	table view
-	col
-	  null default auto_inc fk
-	  integer unsigned tinyint smallint bigint decimal numeric money
-	  float float4 float8 double real
-	  char varchar nchar nvarchar binary varbinary blob text ntext uuid
-	  date datetime timestamp enum bool boolean
-	  json jsonb inflate_json array
-	primary_key idx create_index unique sqlt_add_index sqlt_add_constraint
-	rel_one rel_many has_one might_have has_many belongs_to many_to_many
-	  ddl_cascade dbic_cascade
+  table view
+  col
+    null default auto_inc fk
+    integer unsigned tinyint smallint bigint decimal numeric money
+    float float4 float8 double real
+    char varchar nchar nvarchar MAX binary varbinary bit varbit
+    blob tinyblob mediumblob longblob text tinytext mediumtext longtext ntext bytea
+    date datetime timestamp enum bool boolean
+    uuid json jsonb inflate_json array
+  primary_key idx create_index unique sqlt_add_index sqlt_add_constraint
+  rel_one rel_many has_one might_have has_many belongs_to many_to_many
+    ddl_cascade dbic_cascade
 );
 our %EXPORT_TAGS;
 $EXPORT_TAGS{V1}= \@V1;

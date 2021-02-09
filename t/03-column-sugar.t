@@ -143,9 +143,24 @@ test_col_defs(
 	[ 'varchar(10)',
 		{ data_type => 'varchar', size => 10, is_nullable => 0 }
 	],
+	[ 'nvarchar(10)',
+		{ data_type => 'nvarchar', size => 10, is_nullable => 0 }
+	],
 	versions => [1],
+	[ 'bit',
+		{ data_type => 'bit', size => 1 }
+	],
 	[ 'char[]',
 		{ data_type => 'char[]', size => 1 }
+	],
+	[ 'nvarchar(MAX)',
+		{ data_type => 'nvarchar', size => 'MAX', is_nullable => 0 }
+	],
+	[ 'varbit',
+		{ data_type => 'varbit', size => DNE }
+	],
+	[ 'varbit(20)',
+		{ data_type => 'varbit', size => 20 }
 	],
 	[ 'varchar 3,[], null',
 		{ data_type => 'varchar[]', size => 3, is_nullable => 1 }
