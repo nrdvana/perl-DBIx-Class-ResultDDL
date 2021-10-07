@@ -677,8 +677,10 @@ Note that the normal DBIC belongs_to requires conditions to be of the form
 
   { "foreign.$their_col" => "self.$my_col" }
 
-but all these sugar functions allow it to be written the other way around, and use a table
-name in place of "foreign.".
+but all these sugar functions allow it to be written the other way around, and use a
+Result Class name in place of "foreign.".  The Result Class may be a fully qualified
+package name, or just the final component if it is in the same parent package namespace
+as the current package.
 
 =head2 might_have
 
