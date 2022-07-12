@@ -1,5 +1,5 @@
 package DBIx::Class::ResultDDL::V0;
-use DBIx::Class::ResultDDL -exporter_setup => 1;
+use DBIx::Class::ResultDDL::V1 -exporter_setup => 1;
 use Carp;
 
 # ABSTRACT: Back-compat for version 0 of this module

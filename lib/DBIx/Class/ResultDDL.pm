@@ -11,7 +11,7 @@ use Carp;
 =head1 SYNOPSIS
 
   package MyApp::Schema::Result::Artist;
-  use DBIx::Class::ResultDDL qw/ -V1 -inflate_datetime -inflate_json /;
+  use DBIx::Class::ResultDDL qw/ -V2 -inflate_datetime -inflate_json /;
   
   table 'artist';
   col id           => integer unsigned auto_inc;
@@ -56,7 +56,7 @@ without this option overriding your choice.
 Then, C<< use parent "DBIx::Class::Core" >> unless the class already has an C<add_column>
 method.  If C<add_column> exists it is presumably because you already declared a parent class.
 Note that this check happens at BEGIN-time, so if you use Moo and C<< extends 'SomeClass'; >>
-you need to wrap that in a begin block before the C<< use DBIx::Class::ResultDDL -V1 >> line.
+you need to wrap that in a begin block before the C<< use DBIx::Class::ResultDDL -V2 >> line.
 
 =cut
 
@@ -91,6 +91,10 @@ sub autoclean :Export(-) {
 	on_scope_end { $$sref->clean };
 }
 
+=head2 C<-V2>
+
+Implies C<-swp>, C<:V2>, and C<-autoclean>.
+
 =head2 C<-V1>
 
 Implies C<-swp>, C<:V1>, and C<-autoclean>.
@@ -101,8 +105,8 @@ Implies C<-swp>, C<:V0>, and C<-autoclean>.
 
 =cut
 
-sub V1 :Export(-) {
-	shift->exporter_also_import('-swp',':V1','-autoclean');
+sub V2 :Export(-) {
+	shift->exporter_also_import('-swp',':V2','-autoclean');
 }
 sub exporter_autoload_symbol {
 	my ($self, $sym)= @_;
@@ -186,7 +190,7 @@ sub enable_inflate_json :Export(-inflate_json) {
 
 =head1 EXPORTED COLLECTIONS
 
-=head2 C<:V1>
+=head2 C<:V2>
 
 This tag selects the following symbols:
 
@@ -205,7 +209,7 @@ This tag selects the following symbols:
 
 =cut
 
-my @V1= qw(
+my @V2= qw(
   table view
   col
     null default auto_inc fk
@@ -221,8 +225,14 @@ my @V1= qw(
 );
 
 our %EXPORT_TAGS;
-$EXPORT_TAGS{V1}= \@V1;
-export @V1;
+$EXPORT_TAGS{V2}= \@V2;
+export @V2;
+
+=head2 C<:V1>
+
+See L<DBIx::Class::ResultDDL::V1>.  The primary difference from V2 is a bug in
+C<datetime($timezone)> where the timezone generated the wrong DBIC arguments.
+Also it didn't support C<-retrieve_defaults>.
 
 =head2 C<:V0>
 
@@ -928,6 +938,7 @@ Is the equivalent of
   __PACKAGE__->result_source_instance->is_virtual($options{is_virtual});
 
 =cut
+
 sub view {
         my ($name, $definition, %opts) = @_;
         my $pkg= $CALLER || caller;
@@ -942,7 +953,6 @@ sub view {
         
         return $rsi
 }
-
 
 =head1 INDEXES AND CONSTRAINTS
 
