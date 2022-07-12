@@ -1,0 +1,17 @@
+# DBIx::Class::ResultDDL
+
+This perl module helps developers declare DBIx::Class metadata in
+a convenient, familiar, and easily readable notation.
+
+You can install the latest stable release of this module from CPAN:
+
+    cpanm DBIx::Class::ResutDDL
+
+or build and install this source code with the Dist::Zilla tool:
+
+    dzil build
+    cpanm ./DBIx-Class-ResultDDL-$VERSION
+
+The source is found at
+
+    http://github.com/nrdvana/perl-DBIx-Class-ResultDDL
