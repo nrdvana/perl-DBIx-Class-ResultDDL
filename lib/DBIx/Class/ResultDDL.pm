@@ -589,18 +589,22 @@ sub bool        { data_type => 'boolean'.&_maybe_array, @_ }
 =head3 datetime, timestamp
 
   datetime                      data_type => 'datetime'
-  datetime($tz)                 data_type => 'datetime', time_zone => $tz
+  datetime($tz)                 data_type => 'datetime', timezone => $tz
   datetime[]                    data_type => 'datetime[]'
-  datetime $tz, []              data_type => 'datetime[]', time_zone => $tz
+  datetime $tz, []              data_type => 'datetime[]', timezone => $tz
   
   # Same API
   timestamp ...                 data_type => 'timestamp', ...
 
+B<NOTE> that C<datetime> and C<timestamp> had a bug before version 2 which set "time_zone"
+instead of "timezone", causing the time zone (applied to DateTime objects by the inflator)
+to not take effect, resulting in "floating" timezone DateTime objects.
+
 =cut
 
 sub date        { data_type => 'date'.&_maybe_array, @_ }
-sub datetime    { my $tz= &_maybe_timezone; data_type => 'datetime'.&_maybe_array, ($tz? (time_zone => $tz) : ()), @_ }
-sub timestamp   { my $tz= &_maybe_timezone; data_type => 'timestamp'.&_maybe_array,($tz? (time_zone => $tz) : ()), @_ }
+sub datetime    { my $tz= &_maybe_timezone; data_type => 'datetime'.&_maybe_array, ($tz? (timezone => $tz) : ()), @_ }
+sub timestamp   { my $tz= &_maybe_timezone; data_type => 'timestamp'.&_maybe_array,($tz? (timezone => $tz) : ()), @_ }
 
 =head3 array
 

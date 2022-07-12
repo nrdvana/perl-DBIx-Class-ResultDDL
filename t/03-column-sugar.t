@@ -16,11 +16,13 @@ eval 'package DBIx::Class::InflateColumn::Serializer; our $VERSION=-1;';
 # was created with the correct DBIC column_info.  The test is run for each
 # of the ResultDDL versions listed in @VERSIONS.
 
+my $max_ver= int($DBIx::Class::ResultDDL::VERSION // 2); # for development, since version isn't defined
+
 my $test_n= 0;
 sub test_col_defs {
 	my $name= shift;
-	my $default_versions= { map +($_ => 1), 0..2 };
-	my %use_options_per_version= ( map +($_ => ''), 0..2 );
+	my $default_versions= { map +($_ => 1), 0..$max_ver };
+	my %use_options_per_version= ( map +($_ => ''), 0..$max_ver );
 	my @col_tests;
 	while (@_) {
 		local $_= shift;
@@ -42,7 +44,7 @@ sub test_col_defs {
 		}
 	}
 
-	for my $ver (0..1) {
+	for my $ver (0 .. $max_ver) {
 		my @cols= grep $_->{versions}{$ver}, @col_tests
 			or next;
 		my $use_line= "qw/ -V$ver $use_options_per_version{$ver} /";
@@ -182,15 +184,23 @@ test_col_defs(
 
 test_col_defs(
 	'date',
-	versions => [0,1],
+	versions => [0..2],
 	[ 'date',
 		{ data_type => 'date' },
 	],
+	versions => [0,1],
 	[ 'datetime("floating")',
 		{ data_type => 'datetime', time_zone => 'floating' },
 	],
 	[ 'datetime("UTC")',
 		{ data_type => 'datetime', time_zone => 'UTC' },
+	],
+	versions => [2],
+	[ 'datetime("floating")',
+		{ data_type => 'datetime', timezone => 'floating' },
+	],
+	[ 'datetime("UTC")',
+		{ data_type => 'datetime', timezone => 'UTC' },
 	],
 );
 
