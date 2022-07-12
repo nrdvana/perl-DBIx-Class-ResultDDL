@@ -241,4 +241,22 @@ test_col_defs(
 	]
 );
 
+subtest retrieve_defaults => sub {
+	test_col_defs(
+		'retrieve_defaults',
+		versions => [0..2],
+		[ 'text, default(\"NOW()")',
+			{ data_type => 'text', default_value => \"NOW()" }
+		]
+	);
+	test_col_defs(
+		'retrieve_defaults',
+		versions => [2],
+		options => '-retrieve_defaults',
+		[ 'text, default(\"NOW()")',
+			{ data_type => 'text', default_value => \"NOW()", retrieve_on_insert => 1 }
+		]
+	);
+};
+
 done_testing;
