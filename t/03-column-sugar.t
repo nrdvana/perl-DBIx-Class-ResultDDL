@@ -7,7 +7,7 @@ sub explain { Data::Dumper->new(\@_)->Indent(2)->Dump }
 $INC{'DBIx/Class/InflateColumn/Serializer.pm'}= 1;
 eval 'package DBIx::Class::InflateColumn::Serializer; our $VERSION=-1;';
 
-# test_col_defs $NAME, versions => \@VERSIONS, @COL_DEFS;
+# test_col_defs $NAME, versions => \@VERSIONS, options => \@OPTS, @COL_DEFS;
 #    COL_DEF ::= [ $PERL_DECL, \%column_info ]
 #            ||  { name => $COL_NAME, spec => $PERL_DECL, column_info => \%column_info }
 #
@@ -19,14 +19,19 @@ eval 'package DBIx::Class::InflateColumn::Serializer; our $VERSION=-1;';
 my $test_n= 0;
 sub test_col_defs {
 	my $name= shift;
-	my $default_versions= { map +($_ => 1), 0, 1 };
+	my $default_versions= { map +($_ => 1), 0..2 };
+	my %use_options_per_version= ( map +($_ => ''), 0..2 );
 	my @col_tests;
 	while (@_) {
 		local $_= shift;
 		if ($_ eq 'versions') {
 			$default_versions= { map +($_ => 1), @{ shift() } };
 		}
-		if (ref eq 'ARRAY') {
+		elsif ($_ eq 'options') {
+			my $opts= shift;
+			$use_options_per_version{$_}= $opts for keys %$default_versions;
+		}
+		elsif (ref eq 'ARRAY') {
 			my ($spec, $column_info)= @$_;
 			push @col_tests, { name => 'c'.@col_tests, spec => $spec, column_info => $column_info, versions => $default_versions };
 		}
@@ -40,12 +45,13 @@ sub test_col_defs {
 	for my $ver (0..1) {
 		my @cols= grep $_->{versions}{$ver}, @col_tests
 			or next;
+		my $use_line= "qw/ -V$ver $use_options_per_version{$ver} /";
 		subtest "$name v$ver" => sub {
 			++$test_n;
 			my $pkg= "test::Result$test_n";
 			my $eval= <<___;
 				package $pkg;
-				use DBIx::Class::ResultDDL -V$ver;
+				use DBIx::Class::ResultDDL $use_line;
 				table "result$test_n";
 ___
 			for (@cols) {
@@ -205,10 +211,14 @@ subtest inflate_json => sub {
 			{ data_type => 'jsonb', is_nullable => 1, serializer_class => 'JSON' }
 		],
 	);
-	is( eval 'package test::JSONAutoInflate; use DBIx::Class::ResultDDL qw/ -V1 -inflate_json /; [ json ]',
-		[ data_type => 'json', serializer_class => 'JSON' ],
-		'-inflate_json sets serializer class as default'
-	) or diag $@;
+	test_col_defs(
+		'use -inflate_json',
+		versions => [1,2],
+		options => '-inflate_json',
+		[ 'json',
+			{ data_type => 'json', serializer_class => 'JSON' }
+		],
+	);
 };
 
 test_col_defs(
