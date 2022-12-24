@@ -303,6 +303,16 @@ sub col {
 	1;
 }
 
+=head2 expand_col_options
+
+This is a utility function that performs most of the work of L</col>.
+Given the list of arguments returned by the sugar functions below, it
+returns a hashref of official options for L<DBIx::Class::ResultSource/add_column>.
+
+(It is not exported as part of any tag)
+
+=cut
+
 sub expand_col_options {
 	my $pkg= shift;
 	my $opts= { is_nullable => 0 };
@@ -324,6 +334,7 @@ sub expand_col_options {
 			and _settings_for_package($pkg)->{retrieve_defaults};
 	return $opts;
 }
+export 'expand_col_options';
 
 sub _maybe_array {
 	my @dims;
