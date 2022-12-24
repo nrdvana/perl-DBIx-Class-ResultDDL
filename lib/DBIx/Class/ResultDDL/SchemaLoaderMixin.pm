@@ -17,7 +17,10 @@ use namespace::clean;
   use parent
     'DBIx::Class::ResultDDL::SchemaLoaderMixin', # mixin first
     'DBIx::Class::Schema::Loader::DBI::mysql';
+  
   1;
+
+You can then use it with the loader_class option:
 
   use DBIx::Class::Schema::Loader qw/ make_schema_at /;
   my %options= ...;
@@ -47,6 +50,7 @@ that SchemaLoader doesn't know about:
     }
     $self->next::method($class, $colname, $colinfo);
   }
+  
   1;
 
 =head1 DESCRIPTION
@@ -268,5 +272,12 @@ sub _get_class_check_namespace {
 		$pkg;
 	});
 }
+
+=head1 THANKS
+
+Thanks to L<Clippard Instrument Laboratory Inc.|http://www.clippard.com/>
+for supporting open source, including portions of this module.
+
+=cut
 
 1;

@@ -39,6 +39,10 @@ as if you had said C<use namespace::clean;>.
 This module has a versioned API, to help prevent name collisions.  If you request the C<-Vx>
 behavior, you can rely on that to remain the same across upgrades.
 
+This module also has L<a mixin|DBIx::Class::ResultDDL::SchemaLoaderMixin> for L<Schema::Loader>!
+Now you can have pretty column definitions even on a SQL-first project that you generate from
+the database.
+
 =head1 EXPORTED FEATURES
 
 This module is based on L<Exporter::Extensible>, allowing all the import notations that module
