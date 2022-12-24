@@ -84,7 +84,9 @@ Remove all added symbols at the end of current scope.
 
 =cut
 
+our $DISABLE_AUTOCLEAN;
 sub autoclean :Export(-) {
+	return if $DISABLE_AUTOCLEAN;
 	my $self= shift;
 	my $sref= $self->exporter_config_scope;
 	$self->exporter_config_scope($sref= \my $x) unless $sref;
@@ -175,8 +177,10 @@ sub _settings_for_package {
 sub enable_inflate_datetime :Export(-inflate_datetime) {
 	my $self= shift;
 	$self->_inherit_dbic;
-	$self->{into}->load_components('InflateColumn::DateTime')
-		unless $self->{into}->isa('DBIx::Class::InflateColumn::DateTime');
+	my $pkg= $self->{into};
+	$pkg->load_components('InflateColumn::DateTime')
+		unless $pkg->isa('DBIx::Class::InflateColumn::DateTime');
+	_settings_for_package($pkg)->{inflate_datetime}= 1;
 }
 
 sub enable_inflate_json :Export(-inflate_json) {
@@ -185,7 +189,9 @@ sub enable_inflate_json :Export(-inflate_json) {
 	my $pkg= $self->{into};
 	$pkg->load_components('InflateColumn::Serializer')
 		unless $pkg->isa('DBIx::Class::InflateColumn::Serializer');
-	_settings_for_package($pkg)->{json_defaults}{serializer_class}= 'JSON';
+	my $settings= _settings_for_package($pkg);
+	$settings->{inflate_json}= 1;
+	$settings->{json_defaults}{serializer_class}= 'JSON';
 }
 
 =head2 C<-retrieve_defaults>
@@ -292,6 +298,13 @@ sub col {
 	my $name= shift;
 	croak "Odd number of arguments for col(): (".join(',',@_).")"
 		if scalar(@_) & 1;
+	my $pkg= $CALLER || caller;
+	$pkg->add_column($name, expand_col_options($pkg, @_));
+	1;
+}
+
+sub expand_col_options {
+	my $pkg= shift;
 	my $opts= { is_nullable => 0 };
 	# Apply options to the hash in order, so that they get overwritten as expected
 	while (@_) {
@@ -306,12 +319,10 @@ sub col {
 		$dest= ($dest->{$_} ||= {}) for @path;
 		$dest->{$k}= $v;
 	}
-	my $pkg= $CALLER || caller;
 	$opts->{retrieve_on_insert}= 1
 		if $opts->{default_value} and !defined $opts->{retrieve_on_insert}
 			and _settings_for_package($pkg)->{retrieve_defaults};
-	$pkg->add_column($name, $opts);
-	1;
+	return $opts;
 }
 
 sub _maybe_array {
