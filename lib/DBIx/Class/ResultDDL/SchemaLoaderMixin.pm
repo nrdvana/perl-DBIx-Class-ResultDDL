@@ -140,7 +140,7 @@ sub generate_column_info_sugar {
 		# Any field in %$out removes the need to have it in $col_info.
 		# This happens with implied options like serializer_class => 'JSON'
 		for (keys %col_info) {
-			delete %col_info{$_} if exists $out->{$_};
+			delete $col_info{$_} if exists $out->{$_};
 		}
 		# remove trailing comma
 		$stmt =~ s/,\s*$//;
@@ -194,10 +194,10 @@ my %data_type_sugar= (
 			if ($col_info->{size} && $col_info->{size} =~ /^[0-9]+$/) {
 				return "$type(".delete($col_info->{size})."),";
 			} elsif ($col_info->{size} && ref $col_info->{size} eq 'ARRAY'
-				&& (1 <= scalar($col_info->{size}->@*) <= 2)
-				&& (all { /^[0-9]+$/ } $col_info->{size}->@*)
+				&& ($#{$col_info->{size}} == 0 || $#{$col_info->{size}} == 1)
+				&& (all { /^[0-9]+$/ } @{$col_info->{size}})
 			) {
-				return "$type(".join(',', delete($col_info->{size})->@*)."),";
+				return "$type(".join(',', @{delete($col_info->{size})})."),";
 			} else {
 				return $type;
 			}
