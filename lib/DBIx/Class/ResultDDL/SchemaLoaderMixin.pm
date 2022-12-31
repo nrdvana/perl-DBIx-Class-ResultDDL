@@ -5,7 +5,7 @@ use List::Util 'max', 'all';
 use DBIx::Class::ResultDDL;
 use Carp;
 use Data::Dumper ();
-sub deparse { Data::Dumper->new([$_[0]])->Terse(1)->Quotekeys(0)->Sortkeys(1)->Indent(0)->Dump }
+sub deparse { join ', ', Data::Dumper->new(\@_)->Terse(1)->Quotekeys(0)->Sortkeys(1)->Indent(0)->Dump }
 use namespace::clean;
 
 # ABSTRACT: Modify Schema Loader to generate ResultDDL notation
