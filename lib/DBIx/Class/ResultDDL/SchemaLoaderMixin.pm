@@ -118,18 +118,23 @@ sub generate_column_info_sugar {
 
 	my %col_info= %$orig_col_info;
 	my $stmt= _get_data_type_sugar(\%col_info, $class_settings);
-	$stmt .= ' null' if delete $col_info{is_nullable};
-	$stmt .= ' default('.deparse(delete $col_info{default_value}).'),' if exists $col_info{default_value};
+	$stmt .= ' null'
+		if delete $col_info{is_nullable};
+	$stmt .= ' default('.deparse(delete $col_info{default_value}).'),'
+		if exists $col_info{default_value};
 	# add sugar for inflate_json if the serializer class is JSON, but not if the package feature inflate_json
 	# was enabled and the column type is flagged as json.
 	$stmt .= ' inflate_json' if 'JSON' eq ($col_info{serializer_class}||'');
+	$stmt .= ' fk' if delete $col_info{is_foreign_key};
 	
 	# Test the syntax for equality to the original
 	my $out;
 	eval "package $checkpkg; \$out= DBIx::Class::ResultDDL::expand_col_options(\$checkpkg, $stmt);";
 	defined $out or croak "Error verifying generated ResultDDL for $class $col_name: $@";
 	
-	if ($out->{'extra.unsigned'}) { $out->{extra}{unsigned}= delete $out->{'extra.unsigned'}; }
+	if ($out->{'extra.unsigned'}) {
+		$out->{extra}{unsigned}= delete $out->{'extra.unsigned'};
+	}
 
 	# Ignore the problem where 'integer' generates a default size for mysql that wasn't
 	# in the Schema Loader spec.  TODO: add an option to skip generating this.
@@ -153,12 +158,81 @@ sub generate_column_info_sugar {
 			for sort keys %col_info;
 	}
 	else {
-		warn "Unable to use ResultDDL sugar '$stmt'\n  ".deparse({ %col_info, %$out })." ne ".deparse($orig_col_info)."\n";
-		$stmt= join(', ', map _maybe_quote_identifier($_).' => '.deparse($orig_col_info->{$_}), sort keys %$orig_col_info);
+		warn "Unable to use ResultDDL sugar '$stmt'\n  "
+			.deparse({ %col_info, %$out })." ne ".deparse($orig_col_info)."\n";
+		$stmt= join(', ',
+			map _maybe_quote_identifier($_).' => '.deparse($orig_col_info->{$_}),
+			sort keys %$orig_col_info
+		);
 	}
 	return $stmt;
 }
 
+sub generate_relationship_sugar {
+	my ($self, $class, $method, $relname, $foreignclass, $colmap, $options)= @_;
+	#use DDP; &p(['before', @_[1..$#_]]);
+	my $expr= '';
+	# The $foreignclass $colmap arguments can be combined into a simpler
+	#  hashref of { local_col => 'ForeignClass.colname' } as long as some expectations hold:
+	my ($parent_ns)= ($class =~ /^(.*?::)([^:]+)$/);
+	if (defined $parent_ns and !ref $foreignclass and (!ref $colmap || ref $colmap eq 'HASH')) {
+		# Can we use a shortened class name for the foreign table?
+		if ($foreignclass =~ /^(.*?::)([^:]+)$/ and $1 eq $parent_ns) {
+			$foreignclass= $2;
+		}
+		my %newmap= ref $colmap eq 'HASH'? (%$colmap) : ($colmap => $colmap);
+		# Just in case SchemaLoader prefixed them with 'self.' or 'foreign.'...
+		s/^self[.]// for values %newmap;
+		%newmap= reverse %newmap;
+		s/^foreign[.]// for values %newmap;
+		# Apply the foreign class name to the first column in the map
+		my ($first_key)= sort keys %newmap;
+		$newmap{$first_key}= $foreignclass . '.' . $newmap{$first_key};
+		$expr .= deparse(\%newmap);
+	} else {
+		$expr .= deparse($foreignclass, $colmap);
+	}
+	if ($options && keys %$options) {
+		$expr .= ', ' . $self->generate_relationship_option_sugar($options);
+	}
+
+	# Test the syntax for equality to the original
+	my $checkpkg= $self->_get_class_check_namespace($class);
+	my @out;
+	eval "package $checkpkg; \@out= DBIx::Class::ResultDDL::expand_relationship_params(\$class, \$method, \$relname, $expr);";
+	@out or croak "Error verifying generated ResultDDL for $class $method $relname: $@";
+
+	#use DDP; &p(['after', @out, $expr]);
+
+	return $method . ' ' . _maybe_quote_identifier($relname) . ' => ' . $expr . ';';
+}
+
+sub generate_relationship_option_sugar {
+	my ($self, $orig_options)= @_;
+	my %options= %$orig_options;
+	my @expr;
+	if (defined $options{on_update} && defined $options{on_delete}
+		&& $options{on_update} eq $options{on_delete}
+	) {
+		my $val= delete $options{on_update};
+		delete $options{on_delete};
+		push @expr, $val eq 'CASCADE'? 'ddl_cascade'
+			: $val eq 'RESTRICT'? 'ddl_cascade(0)'
+			: 'ddl_cascade('.deparse($val).')'
+	}
+	if (defined $options{cascade_copy} && defined $options{cascade_delete}
+		&& $options{cascade_copy} eq $options{cascade_delete}
+	) {
+		my $val= delete $options{cascade_copy};
+		delete $options{cascade_delete};
+		push @expr, $val eq '1'? 'dbic_cascade'
+			: 'dbic_cascade('.deparse($val).')'
+	}
+	push @expr, substr(deparse(\%options),1,-1) if keys %options;
+	return join ', ', @expr
+}
+
+my %rel_methods= map +($_ => 1), qw( belongs_to might_have has_one has_many );
 sub _dbic_stmt {
 	my ($self, $class, $method)= splice(@_, 0, 3);
 	$self->{_MyLoader_use_resultddl}{$class}++
@@ -184,6 +258,9 @@ sub _dbic_stmt {
 	}
 	elsif ($method eq 'set_primary_key') {
 		$self->_raw_stmt($class, q|primary_key |.deparse(@_).';');
+	}
+	elsif ($rel_methods{$method} && @_ == 4) {
+		$self->_raw_stmt($class, $self->generate_relationship_sugar($class, $method, @_));
 	}
 	else {
 		$self->next::method($class, $method, @_);

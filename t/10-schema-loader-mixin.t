@@ -68,7 +68,7 @@ mkdir "$tmpdir/lib" or die "mkdir: $!";
 
 # Populate the SQLite with a schema
 my $db= DBI->connect($dsn, undef, undef, { AutoCommit => 1, RaiseError => 1 });
-$db->do(<<SQL);
+$db->do($_) for split /;\n/, <<SQL;
 CREATE TABLE example (
 	id integer primary key autoincrement not null,
 	textcol text not null,
@@ -76,6 +76,16 @@ CREATE TABLE example (
 	datetimecol datetime not null default CURRENT_TIMESTAMP,
 	datetimecol2 datetime null,
 	jsoncol json null
+);
+CREATE TABLE artist (
+	name varchar(100) not null primary key
+);
+CREATE TABLE album (
+	artist_name varchar(100) not null,
+	album_name varchar(255) not null,
+	release_date datetime not null,
+	primary key (artist_name, album_name),
+	foreign key (artist_name) references artist(name)
 );
 SQL
 undef $db;
@@ -91,7 +101,7 @@ subtest standard => sub {
 	# Load the generated classes and verify the data that they declare
 	unshift @INC, "$tmpdir/lib";
 	ok( (eval 'require My::Schema' || diag $@), 'Able to load generated schema' );
-	is( [ My::Schema->sources ], [ 'Example' ], 'ResultSource list' );
+	is( [ sort My::Schema->sources ], [qw( Album Artist Example )], 'ResultSource list' );
 	is( [ My::Schema->source('Example')->columns ], [qw( id textcol varcharcol datetimecol datetimecol2 jsoncol )], 'Example column list' );
 
 	# Verify the sugar methods got used in the source code
@@ -106,6 +116,24 @@ subtest standard => sub {
 	col datetimecol2 => datetime null;
 	col jsoncol      => json null;
 	primary_key 'id';
+PL
+
+	# Verify has_many & belongs_to between artist and album
+	my $artist_src= slurp("$tmpdir/lib/My/Schema/Result/Artist.pm");
+	my $album_src=  slurp("$tmpdir/lib/My/Schema/Result/Album.pm");
+	verify_contains_lines( $artist_src, <<'PL', 'Result::Artist.pm' ) or diag "Unexpected sourcecode:\n$artist_src";
+	table 'artist';
+	col name => varchar(100);
+	primary_key 'name';
+	has_many albums => { name => 'Album.artist_name' };
+PL
+	verify_contains_lines( $album_src, <<'PL', 'Result::Album.pm' ) or diag "Unexpected sourcecode:\n$album_src";
+	table 'album';
+	col artist_name  => varchar(100), fk;
+	col album_name   => varchar(255);
+	col release_date => datetime;
+	primary_key 'artist_name', 'album_name';
+	belongs_to artist => { artist_name => 'Artist.name' };
 PL
 };
 
@@ -123,7 +151,6 @@ subtest with_inflate_json => sub {
 	# Load the generated classes and verify the data that they declare
 	unshift @INC, "$tmpdir/lib";
 	ok( (eval 'require My::SchemaWithJson' || diag $@), 'Able to load generated schema' );
-	is( [ My::SchemaWithJson->sources ], [ 'Example' ], 'ResultSource list' );
 	is( [ My::SchemaWithJson->source('Example')->columns ], [qw( id textcol varcharcol datetimecol datetimecol2 jsoncol )], 'Example column list' );
 
 	# Verify the sugar methods got used in the source code
@@ -146,7 +173,6 @@ subtest with_inflate_datetime => sub {
 	# Load the generated classes and verify the data that they declare
 	unshift @INC, "$tmpdir/lib";
 	ok( (eval 'require My::SchemaWithDatetime' || diag $@), 'Able to load generated schema' );
-	is( [ My::SchemaWithDatetime->sources ], [ 'Example' ], 'ResultSource list' );
 	is( [ My::SchemaWithDatetime->source('Example')->columns ], [qw( id textcol varcharcol datetimecol datetimecol2 jsoncol )], 'Example column list' );
 
 	# Verify the sugar methods got used in the source code
