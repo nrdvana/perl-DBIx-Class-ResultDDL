@@ -5,7 +5,14 @@ use List::Util 'max', 'all';
 use DBIx::Class::ResultDDL;
 use Carp;
 use Data::Dumper ();
-sub deparse { join ', ', Data::Dumper->new(\@_)->Terse(1)->Quotekeys(0)->Sortkeys(1)->Indent(0)->Dump }
+sub deparse {
+	my $pl= join ', ', Data::Dumper->new(\@_)->Terse(1)->Quotekeys(0)->Sortkeys(1)->Indent(0)->Dump;
+	# bad way to fix some annoyances with Data::Dumper.  Should I add Data::Dump as a dependency?
+	$pl =~ s/\{(?=[\w'])/{ /g;
+	$pl =~ s/(?<=[\w'])\}/ }/g;
+	$pl =~ s/'([0-9]+)'/$1/g;
+	$pl;
+}
 use namespace::clean;
 
 # ABSTRACT: Modify Schema Loader to generate ResultDDL notation
@@ -168,6 +175,20 @@ sub generate_column_info_sugar {
 	return $stmt;
 }
 
+=head2 generate_relationship_sugar
+
+  $perl_stmt= $loader->generate_relationship_sugar(
+    $class, $rel_type, %rel_name, $foreign_class, $col_map, $attrs
+  );
+
+This method takes the typical arguments of one of the relationship-defining
+methods of DBIC and returns the equivalent sugar-ized form.  (namely, it
+attempts to convert the $foreign_class and $col_map into the simplified
+version used by ResultDDL, and replace $attrs with sugar functions where
+available.)
+
+=cut
+
 sub generate_relationship_sugar {
 	my ($self, $class, $method, $relname, $foreignclass, $colmap, $options)= @_;
 	#use DDP; &p(['before', @_[1..$#_]]);
@@ -193,7 +214,7 @@ sub generate_relationship_sugar {
 		$expr .= deparse($foreignclass, $colmap);
 	}
 	if ($options && keys %$options) {
-		$expr .= ', ' . $self->generate_relationship_option_sugar($options);
+		$expr .= ', ' . $self->generate_relationship_attr_sugar($options);
 	}
 
 	# Test the syntax for equality to the original
@@ -207,7 +228,16 @@ sub generate_relationship_sugar {
 	return $method . ' ' . _maybe_quote_identifier($relname) . ' => ' . $expr . ';';
 }
 
-sub generate_relationship_option_sugar {
+=head2 generate_relationship_attr_sugar
+
+  $perl_expr= $loader->generate_relationship_attr_sugar(\%attrs);
+
+This is a piece of L</generate_relationship_sugar> that deals only with the
+replacement of relationship attributes with equivalent sugar functions.
+
+=cut
+
+sub generate_relationship_attr_sugar {
 	my ($self, $orig_options)= @_;
 	my %options= %$orig_options;
 	my @expr;
@@ -228,7 +258,7 @@ sub generate_relationship_option_sugar {
 		push @expr, $val eq '1'? 'dbic_cascade'
 			: 'dbic_cascade('.deparse($val).')'
 	}
-	push @expr, substr(deparse(\%options),1,-1) if keys %options;
+	push @expr, substr(deparse(\%options),2,-2) if keys %options;
 	return join ', ', @expr
 }
 

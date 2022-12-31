@@ -90,11 +90,32 @@ CREATE TABLE album (
 SQL
 undef $db;
 
+my %loader_options= (
+	debug => 1,
+	dump_directory => "$tmpdir/lib",
+	naming => 'v7',
+	relationship_attrs => {
+		has_many => {
+			cascade_delete => 0,
+			cascade_copy   => 0,
+		},
+		might_have => {
+			cascade_delete => 0,
+			cascade_copy   => 0,
+		},
+		belongs_to => {
+			on_delete => 'CASCADE',
+			on_update => 'CASCADE',
+			is_deferrable => 1,
+		},
+	},
+);
+
 subtest standard => sub {
 	# Run Schema Loader on the SQLite database
 	DBIx::Class::Schema::Loader::make_schema_at(
 		'My::Schema',
-		{ debug => 1, dump_directory => "$tmpdir/lib" },
+		\%loader_options,
 		[ $dsn, '', '', { loader_class => 'MyLoader' } ],
 	);
 
@@ -125,7 +146,7 @@ PL
 	table 'artist';
 	col name => varchar(100);
 	primary_key 'name';
-	has_many albums => { name => 'Album.artist_name' };
+	has_many albums => { name => 'Album.artist_name' }, dbic_cascade(0);
 PL
 	verify_contains_lines( $album_src, <<'PL', 'Result::Album.pm' ) or diag "Unexpected sourcecode:\n$album_src";
 	table 'album';
@@ -133,7 +154,7 @@ PL
 	col album_name   => varchar(255);
 	col release_date => datetime;
 	primary_key 'artist_name', 'album_name';
-	belongs_to artist => { artist_name => 'Artist.name' };
+	belongs_to artist_name => { artist_name => 'Artist.name' }, ddl_cascade, is_deferrable => 1;
 PL
 };
 
@@ -144,7 +165,7 @@ subtest with_inflate_json => sub {
 	# Run Schema Loader on the SQLite database
 	DBIx::Class::Schema::Loader::make_schema_at(
 		'My::SchemaWithJson',
-		{ debug => 1, dump_directory => "$tmpdir/lib" },
+		\%loader_options,
 		[ $dsn, '', '', { loader_class => 'MyLoaderWithJson' } ],
 	);
 
@@ -166,7 +187,7 @@ subtest with_inflate_datetime => sub {
 	# Run Schema Loader on the SQLite database
 	DBIx::Class::Schema::Loader::make_schema_at(
 		'My::SchemaWithDatetime',
-		{ debug => 1, dump_directory => "$tmpdir/lib" },
+		\%loader_options,
 		[ $dsn, '', '', { loader_class => 'MyLoaderWithDatetime' } ],
 	);
 
