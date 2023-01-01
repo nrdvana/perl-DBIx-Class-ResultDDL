@@ -4,15 +4,8 @@ use warnings;
 use List::Util 'max', 'all';
 use DBIx::Class::ResultDDL;
 use Carp;
-use Data::Dumper ();
-sub deparse {
-	my $pl= join ', ', Data::Dumper->new(\@_)->Terse(1)->Quotekeys(0)->Sortkeys(1)->Indent(0)->Dump;
-	# bad way to fix some annoyances with Data::Dumper.  Should I add Data::Dump as a dependency?
-	$pl =~ s/\{(?=[\w'])/{ /g;
-	$pl =~ s/(?<=[\w'])\}/ }/g;
-	$pl =~ s/'([0-9]+)'/$1/g;
-	$pl;
-}
+sub deparse;
+sub deparse_hashkey;
 use namespace::clean;
 
 # ABSTRACT: Modify Schema Loader to generate ResultDDL notation
@@ -161,14 +154,14 @@ sub generate_column_info_sugar {
 		# remove trailing comma
 		$stmt =~ s/,\s*$//;
 		# dump the rest, and done.
-		$stmt .= ', '._maybe_quote_identifier($_).' => '.deparse($col_info{$_})
+		$stmt .= ', '.&_deparse_hashkey.' => '.deparse($col_info{$_})
 			for sort keys %col_info;
 	}
 	else {
 		warn "Unable to use ResultDDL sugar '$stmt'\n  "
 			.deparse({ %col_info, %$out })." ne ".deparse($orig_col_info)."\n";
 		$stmt= join(', ',
-			map _maybe_quote_identifier($_).' => '.deparse($orig_col_info->{$_}),
+			map &_deparse_hashkey.' => '.deparse($orig_col_info->{$_}),
 			sort keys %$orig_col_info
 		);
 	}
@@ -225,7 +218,7 @@ sub generate_relationship_sugar {
 
 	#use DDP; &p(['after', @out, $expr]);
 
-	return $method . ' ' . _maybe_quote_identifier($relname) . ' => ' . $expr . ';';
+	return $method . ' ' . deparse_hashkey($relname) . ' => ' . $expr . ';';
 }
 
 =head2 generate_relationship_attr_sugar
@@ -275,7 +268,7 @@ sub _dbic_stmt {
 		while (@_) {
 			my ($col_name, $col_info)= splice(@_, 0, 2);
 			push @col_defs, [
-				_maybe_quote_identifier($col_name),
+				deparse_hashkey($col_name),
 				$self->generate_column_info_sugar($class, $col_name, $col_info)
 			];
 		}
@@ -362,9 +355,40 @@ sub _get_data_type_sugar {
 	return $pl;
 }
 
-sub _maybe_quote_identifier {
+sub _deparse_scalar {
+	return $_ if /^(0|[1-9][0-9]*)$/;
+	my $x= $_;
+	$x =~ s/\\/\\\\/g;
+	$x =~ s/'/\\'/g;
+	return "'$x'";
+}
+sub _deparse_scalarref {
+	"\\" . (map &_deparse_scalar, $$_)[0]
+}
+sub deparse_hashkey { local $_= $_[0]; &_deparse_hashkey }
+sub _deparse_hashkey {
 	# TODO: complete support for perl's left-hand of => operator parsing rule
-	$_[0] =~ /^[A-Za-z0-9_]+$/? $_[0] : deparse($_[0]);
+	/^[A-Za-z_][A-Za-z0-9_]*$/? $_ : &_deparse_scalar;
+}
+sub _deparse_hashref {
+	my $h= $_;
+	return '{ '.join(', ', map +(&_deparse_hashkey.' => '.deparse($h->{$_})), sort keys %$h).' }'
+}
+sub _deparse_array {
+	return '[ '.join(', ', map &_deparse, @$_).' ]'
+}
+sub _deparse {
+	!ref? &_deparse_scalar
+	: ref eq 'SCALAR'? &_deparse_scalarref
+	: ref eq 'ARRAY'? &_deparse_arrayref
+	: ref eq 'HASH'? &_deparse_hashref
+	: do {
+		require Data::Dumper;
+		Data::Dumper->new([$_])->Terse(1)->Quotekeys(0)->Sortkeys(1)->Indent(0)->Dump;
+	}
+}
+sub deparse {
+	join(', ', map &_deparse, @_);
 }
 
 our %per_class_check_namespace;
@@ -379,6 +403,8 @@ sub _get_class_check_namespace {
 		$pkg;
 	});
 }
+
+
 
 =head1 THANKS
 
