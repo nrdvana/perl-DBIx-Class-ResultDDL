@@ -4,7 +4,7 @@ use warnings;
 use List::Util 'max', 'all';
 use DBIx::Class::ResultDDL;
 use Carp;
-sub deparse;
+sub deparse; #local utilities to be cleaned from the namespace
 sub deparse_hashkey;
 use namespace::clean;
 
@@ -374,14 +374,14 @@ sub _deparse_hashref {
 	my $h= $_;
 	return '{ '.join(', ', map +(&_deparse_hashkey.' => '.deparse($h->{$_})), sort keys %$h).' }'
 }
-sub _deparse_array {
+sub _deparse_arrayref {
 	return '[ '.join(', ', map &_deparse, @$_).' ]'
 }
 sub _deparse {
-	!ref? &_deparse_scalar
-	: ref eq 'SCALAR'? &_deparse_scalarref
-	: ref eq 'ARRAY'? &_deparse_arrayref
-	: ref eq 'HASH'? &_deparse_hashref
+	!ref()? &_deparse_scalar
+	: ref() eq 'SCALAR'? &_deparse_scalarref
+	: ref() eq 'ARRAY'? &_deparse_arrayref
+	: ref() eq 'HASH'? &_deparse_hashref
 	: do {
 		require Data::Dumper;
 		Data::Dumper->new([$_])->Terse(1)->Quotekeys(0)->Sortkeys(1)->Indent(0)->Dump;
@@ -403,8 +403,6 @@ sub _get_class_check_namespace {
 		$pkg;
 	});
 }
-
-
 
 =head1 THANKS
 
