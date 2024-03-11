@@ -361,6 +361,12 @@ be platform-neutral, then you probably want this.  SQLite also requires data_typ
   default($value)               default_value => $value
   default(@value)               default_value => [ @value ]
 
+Note that this conflicts with C<< use feature "switch"; >> or any of the perl
+version bundles that include it; the switch feature turns 'default' into a keyword
+which cannot be overridden by a function.  If you want to begin your file with
+something like C<< use v5.26; >> then you will also need to add
+C<< no feature 'switch'; >> in order to use this helper.
+
 =cut
 
 sub null        { is_nullable => 1, @_ }
